@@ -4,6 +4,7 @@
   "description": "techNotes MERN Project",
   "main": "server.js",
   "scripts": {
+    "prestart": "npm install --production",
     "start": "node server",
     "dev": "nodemon server"
   },
@@ -30,6 +31,6 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "nodemon": "^2.0.19"
+    "nodemon": "^2.0.22"
   }
 }
