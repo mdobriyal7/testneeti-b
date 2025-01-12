@@ -54,7 +54,6 @@ const questionSchema = new mongoose.Schema({
 });
 
 const sectionSchema = new mongoose.Schema({
-  _id: { type: mongoose.Schema.Types.ObjectId, required: true },
   qCount: { type: Number, required: true }, // Question Count
   title: { type: String, required: true }, // Section Title (e.g., English Language)
   time: { type: Number, required: true }, // Time allocated for the section (in seconds)
@@ -103,6 +102,54 @@ const testSchema = new mongoose.Schema({
   IsFullTest: Boolean,
   patternId: String,
   hasSectionalRank: Boolean,
+});
+
+// Middleware to update parent exam after saving test
+testSchema.post("save", async function (doc) {
+  try {
+    console.log("Updating parent exam:", doc);
+    await mongoose.model("Exam").findByIdAndUpdate(doc.examid, {
+      $push: {
+        specificExams: {
+          id: doc._id.toString(),
+          title: doc.title,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error updating parent exam:", error);
+    throw error;
+  }
+});
+
+// Middleware to remove test from parent exam before deletion
+testSchema.pre("deleteOne", { document: true }, async function () {
+  try {
+    await mongoose.model("Exam").findByIdAndUpdate(this.examId, {
+      $pull: {
+        specificExams: {
+          id: this._id.toString(),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error removing test from parent exam:", error);
+    throw error;
+  }
+});
+
+// Also handle findOneAndDelete operations
+testSchema.pre("findOneAndDelete", async function () {
+  const doc = await this.model.findOne(this.getFilter());
+  if (doc) {
+    await mongoose.model("Exam").findByIdAndUpdate(doc.examId, {
+      $pull: {
+        specificExams: {
+          id: doc._id.toString(),
+        },
+      },
+    });
+  }
 });
 
 module.exports = mongoose.model("Test", testSchema);

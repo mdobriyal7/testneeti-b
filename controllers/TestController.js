@@ -39,7 +39,6 @@ class TestController {
       const finalTestData = { ...testData, ...defaultConfigs };
 
       const newTest = new Test(finalTestData);
-      await newTest.validate(); // Mongoose schema validation
 
       return await newTest.save();
     } catch (error) {
