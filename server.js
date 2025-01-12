@@ -13,7 +13,7 @@ const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
-const PORT = process.env.NODE_ENV || 4000;
+const PORT = process.env.PORT || 4000;
 
 // console.log(process.env.NODE_ENV)
 
