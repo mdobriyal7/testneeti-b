@@ -31,7 +31,7 @@ const optionSchema = new mongoose.Schema({
 const languageSchema = new mongoose.Schema({
   value: { type: String, required: false },
   comp: { type: String, required: false },
-  options: [optionSchema],
+  options: [{ prompt: String, value: String }],
 });
 
 const questionSchema = new mongoose.Schema({
@@ -46,7 +46,7 @@ const questionSchema = new mongoose.Schema({
   skipMarks: { type: Number, default: 0 },
   en: languageSchema, // English
   hn: languageSchema, // Hindi
-  lang: { type: String, default: "" }, // for additional language flexibility
+  lang: { type: String, default: "" },
   subjectLang: { type: String, default: "English" },
   SSNo: { type: Number, required: true },
   SSSNo: { type: Number, required: true },
@@ -54,60 +54,44 @@ const questionSchema = new mongoose.Schema({
 });
 
 const sectionSchema = new mongoose.Schema({
-  qCount: { type: Number, required: true }, // Question Count
-  title: { type: String, required: true }, // Section Title (e.g., English Language)
-  time: { type: Number, required: true }, // Time allocated for the section (in seconds)
+  title: { type: String, required: true },
+  time: { type: Number, required: true },
+  qCount: { type: Number, required: true },
+  maxM: { type: Number, required: true },
+  isQualifyingSection: { type: Boolean, default: false },
+  hasOptionalQuestions: { type: Boolean, default: false },
+  isOptional: { type: Boolean, default: false },
+  isTimeShared: { type: Boolean, default: false },
+  instructions: [String],
   questions: [questionSchema],
-  isQualifyingSection: { type: Boolean, default: false }, // If the section is qualifying only
-  instructions: [{ type: String }], // List of instructions related to the section
-  SSSNo: { type: Number, default: 0 }, // Sub-section number (if applicable)
-  SSNo: { type: Number, default: 1 }, // Section number
-  langFilteredQuestions: { type: mongoose.Schema.Types.Mixed, default: null }, // Language-specific questions if applicable
-  maxM: { type: Number, required: true }, // Maximum marks for the section
-  hasOptionalQuestions: { type: Boolean, default: false }, // If section has optional questions
-  isOptional: { type: Boolean, default: false }, // If the section itself is optional
-  isTimeShared: { type: Boolean, default: false }, // If time is shared across sections
+  SSNo: { type: Number, default: 1 },
 });
 
 const testSchema = new mongoose.Schema({
-  course: String,
-  courseid: String,
-  exam: String,
-  examid: String,
-  title: String,
-  sectionTimeSharedFlag: Boolean,
-  isSectionalSubmit: Boolean,
-  duration: Number,
-  skipDuration: Number,
+  course: { type: String, required: true },
+  courseid: { type: String, required: true },
+  exam: { type: String, required: true },
+  examid: { type: String, required: true },
+  title: { type: String, required: true },
+  duration: { type: Number, required: true },
+  skipDuration: { type: Number, default: 0 },
+  maxM: { type: Number, required: true },
   sections: [sectionSchema],
-  examCutOffs: examCutOffsSchema,
-  specificExams: [specificExamSchema],
-  lang: String,
-  showCalculator: Boolean,
-  showNormalCalculator: Boolean,
-  ContainMAMCQ: Boolean,
-  isLive: Boolean,
   languages: [String],
-  analysisAfter: Number,
-  isAnalysisGenerated: Boolean,
-  containOptionalSections: Boolean,
-  isPyp: Boolean,
-  isFree: Boolean,
+  sectionTimeShared: { type: Boolean, default: false },
+  isSectionalSubmit: { type: Boolean, default: false },
+  showCalculator: { type: Boolean, default: false },
+  showNormalCalculator: { type: Boolean, default: false },
+  containMAMCQ: { type: Boolean, default: false },
+  hasSectionalRank: { type: Boolean, default: false },
+  isFree: { type: Boolean, default: false },
   createdOn: { type: Date, default: Date.now },
-  instructions: [
-    {
-      value: String,
-    },
-  ],
-  IsFullTest: Boolean,
-  patternId: String,
-  hasSectionalRank: Boolean,
+  instructions: [{ value: String }],
 });
 
 // Middleware to update parent exam after saving test
 testSchema.post("save", async function (doc) {
   try {
-    console.log("Updating parent exam:", doc);
     await mongoose.model("Exam").findByIdAndUpdate(doc.examid, {
       $push: {
         specificExams: {
@@ -135,20 +119,6 @@ testSchema.pre("deleteOne", { document: true }, async function () {
   } catch (error) {
     console.error("Error removing test from parent exam:", error);
     throw error;
-  }
-});
-
-// Also handle findOneAndDelete operations
-testSchema.pre("findOneAndDelete", async function () {
-  const doc = await this.model.findOne(this.getFilter());
-  if (doc) {
-    await mongoose.model("Exam").findByIdAndUpdate(doc.examId, {
-      $pull: {
-        specificExams: {
-          id: doc._id.toString(),
-        },
-      },
-    });
   }
 });
 

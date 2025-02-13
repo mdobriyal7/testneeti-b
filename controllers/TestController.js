@@ -10,36 +10,66 @@ class TestController {
    */
   static async createTest(testData) {
     try {
-      console.log(testData.title, testData.duration);
+      console.log("Creating test with data:", testData);
+      
       // Validate required fields
-      if (!testData.title || !testData.duration) {
-        throw new Error("Test title and duration are mandatory");
+      if (!testData.title || testData.title.trim() === '') {
+        throw new Error("Test title is required and cannot be empty");
       }
+      
+      // Convert and validate duration
+      const duration = Number(testData.duration);
+      if (isNaN(duration) || duration <= 0) {
+        throw new Error("Test duration must be a positive number");
+      }
+      testData.duration = duration;
+
+      // Convert and validate maxM
+      const maxM = Number(testData.maxM);
+      if (isNaN(maxM) || maxM <= 0) {
+        throw new Error("Maximum marks must be a positive number");
+      }
+      testData.maxM = maxM;
 
       // Validate section configurations
       if (testData.sections && testData.sections.length > 0) {
-        testData.sections.forEach((section) => {
-          if (!section.title || !section.qCount || !section.time) {
-            throw new Error(
-              "Each section must have a title, question count, and allocated time"
-            );
+        testData.sections.forEach((section, index) => {
+          if (!section.title || section.title.trim() === '') {
+            throw new Error(`Section ${index + 1} must have a title`);
           }
+          
+          // Convert and validate qCount
+          const qCount = Number(section.qCount);
+          if (isNaN(qCount) || qCount <= 0) {
+            throw new Error(`Section ${index + 1} must have a positive question count`);
+          }
+          section.qCount = qCount;
+          
+          // Convert and validate time
+          const time = Number(section.time);
+          if (isNaN(time) || time <= 0) {
+            throw new Error(`Section ${index + 1} must have a positive time allocation`);
+          }
+          section.time = time;
+
+          // Convert and validate section maxM
+          const sectionMaxM = Number(section.maxM);
+          if (isNaN(sectionMaxM) || sectionMaxM <= 0) {
+            throw new Error(`Section ${index + 1} must have a positive maximum marks`);
+          }
+          section.maxM = sectionMaxM;
         });
       }
 
-      // Automatically set some default configurations
+      // Set default configurations
       const defaultConfigs = {
-        isLive: false,
-        isAnalysisGenerated: false,
+        isFree: testData.isFree || false,
         createdOn: new Date(),
         languages: testData.languages || ["English"],
-        isFree: testData.isFree || false,
       };
 
       const finalTestData = { ...testData, ...defaultConfigs };
-
       const newTest = new Test(finalTestData);
-
       return await newTest.save();
     } catch (error) {
       console.error("Test Creation Error:", error);
@@ -55,17 +85,10 @@ class TestController {
    */
   static async getTests(filters = {}, options = {}) {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        sortBy = "createdOn",
-        sortOrder = "desc",
-      } = options;
+      const { page = 1, limit = 10, sortBy = "createdOn", sortOrder = "desc" } = options;
 
-      // Dynamic filtering
       const query = {};
-      if (filters.course) query.course = filters.course;
-      if (filters.isLive !== undefined) query.isLive = filters.isLive;
+      if (filters.examId) query.examid = filters.examId;
       if (filters.isFree !== undefined) query.isFree = filters.isFree;
 
       const totalTests = await Test.countDocuments(query);
@@ -73,7 +96,7 @@ class TestController {
         .sort({ [sortBy]: sortOrder === "desc" ? -1 : 1 })
         .skip((page - 1) * limit)
         .limit(limit)
-        .select("-sections.questions"); // Exclude detailed question data
+        .select("-sections.questions");
 
       return {
         tests,
@@ -93,34 +116,13 @@ class TestController {
    * @param {Object} options - Optional configuration for selecting fields
    * @returns {Object} Detailed test document
    */
-  static async getTestById(testId, options = {}) {
+  static async getTestById(testId) {
     try {
-      // Validate that the provided testId is a valid MongoDB ObjectId
       if (!mongoose.Types.ObjectId.isValid(testId)) {
         throw new Error("Invalid test ID");
       }
 
-      // Default options for selecting fields
-      const defaultOptions = {
-        includeQuestions: false, // Whether to include question details
-        selectFields: null, // Optional additional field selection
-      };
-
-      // Merge provided options with defaults
-      const mergedOptions = { ...defaultOptions, ...options };
-
-      // Construct the selection string
-      let selectString = mergedOptions.selectFields || "";
-
-      // Conditionally exclude questions from sections if not requested
-      if (!mergedOptions.includeQuestions) {
-        selectString += " -sections.questions";
-      }
-
-      // Find the test by ID with selective projection
-      const test = await Test.findById(testId).select(selectString.trim());
-
-      // Handle case where test is not found
+      const test = await Test.findById(testId);
       if (!test) {
         throw new Error("Test not found");
       }
@@ -140,35 +142,20 @@ class TestController {
    */
   static async updateTest(testId, updateData) {
     try {
-      // Validate ObjectId
       if (!mongoose.Types.ObjectId.isValid(testId)) {
         throw new Error("Invalid test ID");
       }
 
-      // Prevent direct overwrite of critical fields
+      // Prevent modification of critical fields
       const restrictedFields = ["_id", "createdOn"];
-      restrictedFields.forEach((field) => {
+      restrictedFields.forEach(field => {
         if (updateData[field]) delete updateData[field];
       });
-
-      // Intelligent section update strategy
-      if (updateData.sections) {
-        updateData.sections = updateData.sections.map((section) => {
-          // Preserve existing section ID if not provided
-          if (!section._id) {
-            section._id = new mongoose.Types.ObjectId();
-          }
-          return section;
-        });
-      }
 
       const updatedTest = await Test.findByIdAndUpdate(
         testId,
         { $set: updateData },
-        {
-          new: true,
-          runValidators: true,
-        }
+        { new: true, runValidators: true }
       );
 
       if (!updatedTest) {
@@ -188,23 +175,13 @@ class TestController {
    * @param {Boolean} softDelete - Flag for soft deletion
    * @returns {Object} Deletion result
    */
-  static async deleteTest(testId, softDelete = false) {
+  static async deleteTest(testId) {
     try {
       if (!mongoose.Types.ObjectId.isValid(testId)) {
         throw new Error("Invalid test ID");
       }
 
-      if (softDelete) {
-        // Implement soft delete if needed
-        return await Test.findByIdAndUpdate(
-          testId,
-          { isLive: false },
-          { new: true }
-        );
-      }
-
       const deletedTest = await Test.findByIdAndDelete(testId);
-
       if (!deletedTest) {
         throw new Error("Test not found");
       }
@@ -438,6 +415,102 @@ class TestController {
   }
   static adjustTestDifficulty() {
     /* Implementation */
+  }
+
+  // Get tests by exam ID
+  static async getTestsByExamId(req, res) {
+    try {
+      const { examId } = req.params;
+      console.log("Fetching tests for examId:", examId); // Debug log
+
+      // Validate examId
+      if (!examId) {
+        return res.status(400).json({
+          success: false,
+          message: "Exam ID is required",
+        });
+      }
+
+      // Find all tests for the given exam
+      const tests = await Test.find({ examid: examId })
+        .select("_id title description")
+        .lean();
+
+      console.log("Found tests:", tests); // Debug log
+
+      return res.status(200).json({
+        success: true,
+        tests,
+      });
+    } catch (error) {
+      console.error("Error in getTestsByExamId:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+
+  // Get all tests with pagination
+  static async getTests(req, res) {
+    try {
+      const { page = 1, limit = 10, ...filters } = req.query;
+      const query = {};
+
+      if (filters.examId) query.examId = filters.examId;
+      if (filters.isFree !== undefined) query.isFree = filters.isFree;
+
+      const totalTests = await Test.countDocuments(query);
+      const tests = await Test.find(query)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select("-sections.questions")
+        .lean();
+
+      return res.status(200).json({
+        success: true,
+        tests,
+        totalTests,
+        currentPage: page,
+        totalPages: Math.ceil(totalTests / limit),
+      });
+    } catch (error) {
+      console.error("Error in getTests:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
+  }
+
+  // Get test by ID
+  static async getTestById(req, res) {
+    try {
+      const { id } = req.params;
+      const test = await Test.findById(id).lean();
+
+      if (!test) {
+        return res.status(404).json({
+          success: false,
+          message: "Test not found",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        test,
+      });
+    } catch (error) {
+      console.error("Error in getTestById:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: error.message,
+      });
+    }
   }
 }
 

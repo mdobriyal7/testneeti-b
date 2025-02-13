@@ -14,6 +14,10 @@ const bodyParser = require("body-parser");
 const multer = require("multer");
 const upload = multer({ dest: "uploads/" });
 const PORT = process.env.PORT || 4000;
+const TestSeriesRoutes = require("./routes/testSeriesRoutes");
+const TestTemplateRoutes = require("./routes/TestTemplateRoutes");
+const questionPaperRoutes = require('./routes/questionPaperRoutes');
+const TestSeriesSectionRoutes = require("./routes/TestSeriesSectionRoutes");
 
 // console.log(process.env.NODE_ENV)
 
@@ -42,19 +46,17 @@ app.use(
   require("./routes/CourseRoutes")
 );
 app.use(`${process.env.API_ROOT_URL}/tests`, require("./routes/TestRoutes"));
+app.use(`${process.env.API_ROOT_URL}/test-series`, TestSeriesRoutes);
+app.use(`${process.env.API_ROOT_URL}/test-series`, TestSeriesSectionRoutes);
+app.use(`${process.env.API_ROOT_URL}/test-series`, TestTemplateRoutes);
 
-app.use(
-  `${process.env.API_ROOT_URL}/mock`,
-  require("./routes/multiStepperRoutes")
-);
-app.use(
-  `${process.env.API_ROOT_URL}/testSeries`,
-  require("./routes/testSeriesRoute")
-);
-app.use(
-  `${process.env.API_ROOT_URL}/test-papers`,
-  require("./routes/testPaperRoutes")
-);
+// Add this before your routes to log all incoming requests
+app.use((req, res, next) => {
+  console.log('Incoming request URL:', req.url);
+  next();
+});
+
+app.use(`${process.env.API_ROOT_URL}/test-series`, questionPaperRoutes);
 
 app.all("*", (req, res) => {
   res.status(404);

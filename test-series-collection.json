@@ -1,0 +1,204 @@
+{
+  "info": {
+    "name": "Test Series API",
+    "description": "Collection for Test Series and Sections Management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Test Series",
+      "item": [
+        {
+          "name": "Create Test Series",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"JEE Main Mock Test Series 2024\",\n  \"description\": \"Comprehensive mock test series for JEE Main 2024\",\n  \"courseId\": \"{{courseId}}\",\n  \"examId\": \"{{examId}}\",\n  \"price\": 999,\n  \"duration\": 180,\n  \"totalQuestions\": 90,\n  \"maxMarks\": 360,\n  \"startDate\": \"2024-01-01T00:00:00.000Z\",\n  \"endDate\": \"2024-03-31T23:59:59.999Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Test Series by ID",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/test-series/{{testSeriesId}}"
+          }
+        },
+        {
+          "name": "Get Test Series by Course and Exam",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/test-series?courseId={{courseId}}&examId={{examId}}"
+          }
+        },
+        {
+          "name": "Update Test Series",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/{{testSeriesId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated JEE Main Mock Test Series 2024\",\n  \"price\": 1299,\n  \"duration\": 180,\n  \"totalQuestions\": 90,\n  \"maxMarks\": 360\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Student Stats",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/{{testSeriesId}}/student/{{studentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"score\": 280,\n  \"timeTaken\": 150,\n  \"questionsAttempted\": 75,\n  \"correctAnswers\": 70\n}"
+            }
+          }
+        },
+        {
+          "name": "Bulk Update Test Series",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/bulk-update",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"testSeries\": [\n    {\n      \"id\": \"{{testSeriesId1}}\",\n      \"price\": 999\n    },\n    {\n      \"id\": \"{{testSeriesId2}}\",\n      \"price\": 1299\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Test Series",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/test-series/{{testSeriesId}}"
+          }
+        },
+        {
+          "name": "Get Analytics",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/test-series/analytics"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Series Sections",
+      "item": [
+        {
+          "name": "Create Section",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/sections",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"testSeriesId\": \"{{testSeriesId}}\",\n  \"title\": \"Physics Section\",\n  \"description\": \"Physics questions for JEE Main\",\n  \"duration\": 60,\n  \"totalQuestions\": 30,\n  \"maxMarks\": 120,\n  \"instructions\": \"Each question carries 4 marks. -1 mark for wrong answers.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Question Paper to Section",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/sections/{{sectionId}}/question-papers",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Physics Set 1\",\n  \"questions\": [\n    {\n      \"questionText\": \"What is the SI unit of force?\",\n      \"options\": [\"Newton\", \"Joule\", \"Watt\", \"Pascal\"],\n      \"correctAnswer\": 0,\n      \"marks\": 4\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Section",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/sections/{{sectionId}}"
+          }
+        },
+        {
+          "name": "Update Section",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/sections/{{sectionId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Physics Section\",\n  \"duration\": 75,\n  \"totalQuestions\": 35,\n  \"maxMarks\": 140\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Section",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": "{{base_url}}/api/test-series/sections/{{sectionId}}"
+          }
+        }
+      ]
+    }
+  ]
+}
