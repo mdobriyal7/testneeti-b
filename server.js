@@ -18,6 +18,7 @@ const TestSeriesRoutes = require("./routes/testSeriesRoutes");
 const TestTemplateRoutes = require("./routes/TestTemplateRoutes");
 const questionPaperRoutes = require('./routes/questionPaperRoutes');
 const TestSeriesSectionRoutes = require("./routes/TestSeriesSectionRoutes");
+const TestAttemptRoutes = require('./routes/TestAttemptRoute');
 
 // console.log(process.env.NODE_ENV)
 
@@ -49,6 +50,7 @@ app.use(`${process.env.API_ROOT_URL}/tests`, require("./routes/TestRoutes"));
 app.use(`${process.env.API_ROOT_URL}/test-series`, TestSeriesRoutes);
 app.use(`${process.env.API_ROOT_URL}/test-series`, TestSeriesSectionRoutes);
 app.use(`${process.env.API_ROOT_URL}/test-series`, TestTemplateRoutes);
+app.use(`${process.env.API_ROOT_URL}/api`, TestAttemptRoutes);
 
 // Add this before your routes to log all incoming requests
 app.use((req, res, next) => {

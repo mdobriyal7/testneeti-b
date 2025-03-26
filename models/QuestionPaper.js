@@ -3,26 +3,30 @@ const { ValidationError } = require("../utils/errors");
 
 // Language-specific content schema
 const languageContentSchema = new mongoose.Schema({
-    prompt: { 
-        type: String,
-        required: true,
-        trim: true,
-        minlength: [1, "Prompt cannot be empty"]
-    },
     value: { 
         type: String, 
-        required: true,
+        default: '',
         trim: true 
+    },
+    comp: {
+        type: String,
+        default: '',
+        trim: true 
+    },
+    solution: {
+        type: String,
+        default: '',
+        trim: true
     },
     options: [{
         prompt: { 
             type: String, 
-            required: true,
+            default: '',
             trim: true 
         },
         value: { 
             type: String, 
-            required: true,
+            default: '',
             trim: true 
         }
     }]
@@ -34,11 +38,17 @@ const questionSchema = new mongoose.Schema(
         isNum: { 
             type: Boolean, 
             default: false,
-        required: true
+            required: true
         },
         type: {
             type: String,
             enum: ["mcq", "numerical", "descriptive"],
+            required: true,
+            index: true
+        },
+        isComplete: {
+            type: Boolean,
+            default: false,
             required: true,
             index: true
         },
@@ -100,12 +110,6 @@ const questionSchema = new mongoose.Schema(
             min: 1,
             validate: Number.isInteger
         },
-        SSSNo: { 
-            type: Number, 
-            required: true,
-            min: 1,
-            validate: Number.isInteger
-        },
         QSNo: { 
             type: Number, 
             required: true,
@@ -119,96 +123,50 @@ const questionSchema = new mongoose.Schema(
     }
 );
 
+// Add pre-save middleware to validate and set isComplete
+questionSchema.pre('save', function(next) {
+    // Check if question is complete based on type
+    if (this.type === 'mcq') {
+        this.isComplete = !!(
+            this.content?.get('en')?.value?.trim() && 
+            this.content.get('en').options?.some(opt => opt.value?.trim()) &&
+            typeof this.correctAnswer === 'number'
+        );
+    } else if (this.type === 'numerical') {
+        this.isComplete = !!(
+            this.content?.get('en')?.value?.trim() && 
+            typeof this.correctAnswer === 'number'
+        );
+    } else if (this.type === 'descriptive') {
+        this.isComplete = !!(
+            this.content?.get('en')?.value?.trim() && 
+            typeof this.correctAnswer === 'string' &&
+            this.correctAnswer.trim().length > 0
+        );
+    }
+    next();
+});
+
 // Section schema for question paper
 const sectionSchema = new mongoose.Schema({
-    title: {
-        type: String,
-        required: true,
-        trim: true
+    _id: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        required: true, 
+        default: () => new mongoose.Types.ObjectId(),
+        auto: true  // Ensure auto-generation
     },
-    duration: {
-        type: Number,
-        required: true,
-        min: [1, "Duration must be at least 1 minute"]
-    },
-    maxMarks: {
-        type: Number,
-        required: true,
-        min: [0, "Maximum marks cannot be negative"]
-    },
-    qCount: {
-        type: Number,
-        required: true,
-        min: [0, "Question count cannot be negative"]
-    },
-    isQualifyingSection: {
-        type: Boolean,
-        default: false
-    },
-    instructions: {
-        type: [String],
-        default: [],
-        validate: {
-            validator: function(v) {
-                return Array.isArray(v);
-            },
-            message: props => `${props.value} must be an array of strings`
-        }
-    },
-    SSSNo: {
-        type: Number,
-        required: true,
-        min: 1
-    },
-    SSNo: {
-        type: Number,
-        required: true,
-        min: 1
-    },
-    langFilteredQuestions: {
-        type: Boolean,
-        default: false
-    },
-    hasOptionalQuestions: {
-        type: Boolean,
-        default: false
-    },
-    isOptional: {
-        type: Boolean,
-        default: false
-    },
-    isTimeShared: {
-        type: Boolean,
-        default: false
-    },
+    title: { type: String, required: true },
+    time: { type: Number, required: true },
+    qCount: { type: Number, required: true },
+    maxM: { type: Number, required: true },
+    isQualifyingSection: { type: Boolean, default: false },
+    hasOptionalQuestions: { type: Boolean, default: false },
+    isOptional: { type: Boolean, default: false },
+    isTimeShared: { type: Boolean, default: false },
+    instructions: [String],
     questions: [questionSchema],
-    settings: {
-        shuffleQuestions: {
-            type: Boolean,
-            default: true
-        },
-        showCalculator: {
-            type: Boolean,
-            default: false
-        },
-        sectionTimeShared: {
-            type: Boolean,
-            default: false
-        },
-        isOptional: {
-            type: Boolean,
-            default: false
-        },
-        hasOptionalQuestions: {
-            type: Boolean,
-            default: false
-        },
-        isQualifyingSection: {
-            type: Boolean,
-            default: false
-        }
-    }
-}, { _id: false });
+    SSNo: { type: Number, default: 1 }
+});
 
 const questionPaperSchema = new mongoose.Schema(
     {
@@ -291,12 +249,12 @@ const questionPaperSchema = new mongoose.Schema(
 
 // Virtual for calculating total duration
 questionPaperSchema.virtual("totalDuration").get(function() {
-    return this.sections.reduce((total, section) => total + section.duration, 0);
+    return this.sections.reduce((total, section) => total + section.time, 0);
 });
 
 // Virtual for calculating total marks
 questionPaperSchema.virtual("totalMarks").get(function() {
-    return this.sections.reduce((total, section) => total + section.maxMarks, 0);
+    return this.sections.reduce((total, section) => total + section.maxM, 0);
 });
 
 // Virtual for calculating total questions
@@ -399,6 +357,21 @@ questionPaperSchema.pre('remove', async function(next) {
     } catch (error) {
         next(error);
     }
+});
+
+// Add pre-save middleware to ensure questions have section numbers
+questionPaperSchema.pre('save', function(next) {
+    // Go through each section
+    this.sections.forEach(section => {
+        // Go through each question in the section
+        section.questions.forEach(question => {
+            // Ensure question has SSNo from its section
+            if (!question.SSNo) {
+                question.SSNo = section.SSNo;
+            }
+        });
+    });
+    next();
 });
 
 // Check if model exists before compiling

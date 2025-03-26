@@ -77,7 +77,7 @@ const testSeriesSectionSchema = new mongoose.Schema(
     },
     questionPapers: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: "QuestionPaper"
+      ref: 'QuestionPaper'
     }],
     settings: {
       inheritTestProperties: {
@@ -99,11 +99,11 @@ const testSeriesSectionSchema = new mongoose.Schema(
         },
         showCalculator: {
           type: Boolean,
-          default: null // Inherit from test if null
+          default: null
         },
         sectionTimeShared: {
           type: Boolean,
-          default: null // Inherit from test if null
+          default: null
         }
       }
     },
@@ -236,43 +236,33 @@ testSeriesSectionSchema.post("save", async function(doc) {
 });
 
 // Method to add question paper
-testSeriesSectionSchema.methods.addQuestionPaper = async function(questionPaperId) {
-  if (!mongoose.Types.ObjectId.isValid(questionPaperId)) {
-    throw new ValidationError("Invalid question paper ID");
+testSeriesSectionSchema.methods.addQuestionPaper = async function(questionPaper) {
+  if (!questionPaper._id) {
+    throw new ValidationError("Invalid question paper");
   }
 
-  const questionPaper = await QuestionPaper.findById(questionPaperId);
+  // Add question paper to array if not already present
+  if (!this.questionPapers.includes(questionPaper._id)) {
+    this.questionPapers.push(questionPaper._id);
+  }
+
+  // Update metadata
+  this.metadata.lastQuestionPaperAdded = new Date();
+  this.metadata.totalQuestions += questionPaper.totalQuestions || 0;
+  this.metadata.totalMarks += questionPaper.totalMarks || 0;
   
-  if (!questionPaper) {
-    throw new ValidationError("Question paper not found");
-  }
-  if (questionPaper.testSeriesSectionId.toString() !== this._id.toString()) {
-    throw new ValidationError("Question paper does not belong to this section");
-  }
-
-  if (!this.questionPapers.includes(questionPaperId)) {
-    this.questionPapers.push(questionPaperId);
-    this.metadata.lastQuestionPaperAdded = new Date();
-    this.metadata.totalQuestions += questionPaper.totalQuestions || 0;
-    this.metadata.totalMarks += questionPaper.maxMarks || 0;
-    await this.save();
-  }
-
+  await this.save();
   return this;
 };
 
 // Method to remove question paper
 testSeriesSectionSchema.methods.removeQuestionPaper = async function(questionPaperId) {
-  const index = this.questionPapers.indexOf(questionPaperId);
-  if (index > -1) {
-    const questionPaper = await QuestionPaper.findById(questionPaperId);
-    
-    if (questionPaper) {
-      this.metadata.totalQuestions -= questionPaper.totalQuestions || 0;
-      this.metadata.totalMarks -= questionPaper.maxMarks || 0;
-    }
-
-    this.questionPapers.splice(index, 1);
+  const questionPaper = await QuestionPaper.findById(questionPaperId);
+  
+  if (questionPaper) {
+    this.questionPapers = this.questionPapers.filter(id => id.toString() !== questionPaperId.toString());
+    this.metadata.totalQuestions -= questionPaper.totalQuestions || 0;
+    this.metadata.totalMarks -= questionPaper.totalMarks || 0;
     await this.save();
   }
   return this;
